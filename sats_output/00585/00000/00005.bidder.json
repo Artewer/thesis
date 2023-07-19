@@ -1,0 +1,32 @@
+{
+  "bidderPosition": 5,
+  "values": {
+    "0": 0.114464858675569214341294355108402669429779052734375,
+    "1": 10.25340917087100223170637036673724651336669921875,
+    "17": 19.204940858725660035588589380495250225067138671875,
+    "10": 16.721100911400842647935860441066324710845947265625,
+    "11": 11.6497081111209723758292966522276401519775390625,
+    "12": 10.89919228388593097633929573930799961090087890625
+  },
+  "setupType": "Regional Bidder Setup",
+  "population": 0,
+  "id": 5,
+  "worldId": 585,
+  "setup": {
+    "lowNationalValueInterval": {
+      "minValue": 0.0,
+      "maxValue": 20.0
+    },
+    "highNationalValueInterval": {
+      "minValue": 0.0,
+      "maxValue": 40.0
+    },
+    "regionalValueInterval": {
+      "minValue": 0.0,
+      "maxValue": 20.0
+    },
+    "setupName": "Regional Bidder Setup",
+    "numberOfBidders": 6
+  },
+  "implementation": "org.spectrumauctions.sats.core.model.gsvm.GSVMBidder"
+}

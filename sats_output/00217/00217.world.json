@@ -1,0 +1,126 @@
+{
+  "grid": {
+    "licenses": [
+      [
+        {
+          "rowPosition": 0,
+          "columnPosition": 0,
+          "id": 0,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 0,
+          "columnPosition": 1,
+          "id": 1,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 0,
+          "columnPosition": 2,
+          "id": 2,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 0,
+          "columnPosition": 3,
+          "id": 3,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 0,
+          "columnPosition": 4,
+          "id": 4,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 0,
+          "columnPosition": 5,
+          "id": 5,
+          "worldId": 217
+        }
+      ],
+      [
+        {
+          "rowPosition": 1,
+          "columnPosition": 0,
+          "id": 6,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 1,
+          "columnPosition": 1,
+          "id": 7,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 1,
+          "columnPosition": 2,
+          "id": 8,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 1,
+          "columnPosition": 3,
+          "id": 9,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 1,
+          "columnPosition": 4,
+          "id": 10,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 1,
+          "columnPosition": 5,
+          "id": 11,
+          "worldId": 217
+        }
+      ],
+      [
+        {
+          "rowPosition": 2,
+          "columnPosition": 0,
+          "id": 12,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 2,
+          "columnPosition": 1,
+          "id": 13,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 2,
+          "columnPosition": 2,
+          "id": 14,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 2,
+          "columnPosition": 3,
+          "id": 15,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 2,
+          "columnPosition": 4,
+          "id": 16,
+          "worldId": 217
+        },
+        {
+          "rowPosition": 2,
+          "columnPosition": 5,
+          "id": 17,
+          "worldId": 217
+        }
+      ]
+    ],
+    "worldId": 217,
+    "numberOfRows": 3,
+    "numberOfColumns": 6
+  },
+  "modelName": "Local Synergy Value Model",
+  "id": 217,
+  "implementation": "org.spectrumauctions.sats.core.model.lsvm.LSVMWorld"
+}
