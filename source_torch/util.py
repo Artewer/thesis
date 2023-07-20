@@ -109,52 +109,55 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
     #create a list of last values from D_presampled
     values = D_presampled[:, -1].tolist()
     bundles = D_presampled[:, :-1].tolist()
-
-
+    M = len(value_model.get_good_ids())
+        
     count = 1
     while count <= (n-presampled_n):
-        if ml_model is not None:
-            reg = None #TODO
-        else:
-            reg = LinearRegression().fit(bundles, values)
-        y_pred = reg.predict(bundles)
-        answers = []
+        print(values)
+        print(bundles)
+        reg = LinearRegression().fit(bundles, values)
+        coef = reg.coef_
+        intercept = reg.intercept_
+        x_vectors = []
+        x_distances = []
         for i in range(len(bundles)):
             m = Model(name='sampling')
             r = m.continuous_var(name='r')
+                        
+            x = m.binary_var_list(range(M), name='x')
+            
+            b = m.binary_var_list(len(values), name='b')
 
             #Constraints
 
             constraints = []
-            constraints.append(values[i] - y_pred[i] <= r)
-            constraints.append(y_pred[i] - values[i] <= r)
 
-            b = m.binary_var_list(keys=len(values), name='b')
+            y_prediction = np.sum(x*coef) + intercept
+
+            constraints.append(values[i] - y_prediction <= r)
+            constraints.append(y_prediction - values[i] <= r)
+
 
             for j in range(len(values)):
-                constraints.append(values[j] - y_pred[i] + 99999 * b[j] >= r)
-                constraints.append(y_pred[i] - values[j] + 99999 * (1 - b[j]) >= r)
+                constraints.append(values[j] - y_prediction + 10000 * b[j] >= r)
+                constraints.append(y_prediction - values[j] + 10000 * (1 - b[j]) >= r)
 
             m.add_constraints(constraints)
 
             m.maximize(r)
 
             sol = m.solve()
-
-            try:
-                answers.append(sol.get_value('r'))
-                logging.debug('r solution found: ' + str(sol.get_value('r')) + ' for bundle: ' + str(bundles[i]))
-            except:
-                logging.debug('No r solution found for GALO. Continuing with next bundle.')
-        max_distance_bundle = np.argmax(answers)#get_value
-        #invert bundle
-        bundle_to_query = [1 if x==0 else 0 for x in bundles[max_distance_bundle]]
-        values.append(value_model.calculate_value(bidder_id, bundle_to_query))
+            vector = np.array([x[i].solution_value for i in range(M)])
+            x_vectors.append(vector)
+            distance = np.sum(np.abs(np.sum(vector*coef)+intercept - values[i]))
+            x_distances.append(distance)
+        
+        chosen_bundle = x_vectors[np.argmax(x_distances)]
+        values.append(value_model.calculate_value(bidder_id, chosen_bundle))
+        bundles.append(chosen_bundle.tolist())
         count+=1
-        bundles.append(bundle_to_query)     
     D = np.array(bundles)
     D = np.hstack((D, np.array(values).reshape(-1, 1)))
-    #print(D)
     return (D)
 
 
