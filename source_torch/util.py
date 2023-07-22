@@ -113,8 +113,6 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
         
     count = 1
     while count <= (n-presampled_n):
-        print(values)
-        print(bundles)
         reg = LinearRegression().fit(bundles, values)
         coef = reg.coef_
         intercept = reg.intercept_
@@ -147,14 +145,22 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
             m.maximize(r)
 
             sol = m.solve()
+
+            try:
+                sol.get_objective_value()
+            except:
+                print('No solution found')
+                continue
             vector = np.array([x[i].solution_value for i in range(M)])
             x_vectors.append(vector)
             distance = np.sum(np.abs(np.sum(vector*coef)+intercept - values[i]))
             x_distances.append(distance)
-        
         chosen_bundle = x_vectors[np.argmax(x_distances)]
-        values.append(value_model.calculate_value(bidder_id, chosen_bundle))
+        value = value_model.calculate_value(bidder_id, chosen_bundle)
+        values.append(value)
         bundles.append(chosen_bundle.tolist())
+        print(chosen_bundle)
+        print(value)
         count+=1
     D = np.array(bundles)
     D = np.hstack((D, np.array(values).reshape(-1, 1)))
