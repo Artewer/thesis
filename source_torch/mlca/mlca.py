@@ -109,11 +109,16 @@ def mlca_mechanism(SATS_domain_name=None, SATS_auction_instance_seed=None, Qinit
     #         E.set_initial_bids_mlca_extra()
 
     # Set initial bids | Line 1-3
+
+    #new_ilp = MLCA_NNMIP()
+
     init_bids, init_fitted_scaler = init_bids_and_fitted_scaler
     if init_bids is not None:
         E.set_initial_bids(initial_bids=init_bids, fitted_scaler=init_fitted_scaler, active_learning_algorithm = active_learning_algorithm,  presampled_n=presampled_n, presampled_algorithm=presampled_algorithm) # (*) use self defined inital bids | Line 1
     else:
         E.set_initial_bids(active_learning_algorithm = active_learning_algorithm, presampled_n=presampled_n, presampled_algorithm=presampled_algorithm)  # (*) create inital bids B^0, uniformly sampling at random from bundle space | Line 2
+
+        
 
     # Calculate efficient allocation given current elicited bids
     if calc_efficiency_per_iteration: E.calculate_efficiency_per_iteration()

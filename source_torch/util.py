@@ -130,11 +130,11 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
 
             constraints = []
 
-            y_prediction = np.sum(x*coef) + intercept
+            y_prediction = m.sum(x[k]*coef[k] for k in range(M)) + intercept
 
             constraints.append(values[i] - y_prediction <= r)
-            constraints.append(y_prediction - values[i] <= r)
 
+            constraints.append(y_prediction - values[i] <= r)
 
             for j in range(len(values)):
                 constraints.append(values[j] - y_prediction + 10000 * b[j] >= r)
@@ -151,7 +151,7 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
             except:
                 print('No solution found')
                 continue
-            vector = np.array([x[i].solution_value for i in range(M)])
+            vector = np.array([x[k].solution_value for k in range(M)])
             x_vectors.append(vector)
             distance = np.sum(np.abs(np.sum(vector*coef)+intercept - values[i]))
             x_distances.append(distance)

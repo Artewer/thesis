@@ -22,8 +22,6 @@ import pdb
 class MLCA_NNMIP:
 
     def __init__(self, models, L=None):
-
-        # self.M = models[list(models.keys())[0]].get_weights()[0].shape[0]  # number of items in the value model = dimension of input layer
         self.M = models[list(models.keys())[0]].model[0].weight.data.T.numpy().shape[0] # number of items in the value model = dimension of input layer
         self.Models = models  # dict of keras models
         # sorted list of bidders
