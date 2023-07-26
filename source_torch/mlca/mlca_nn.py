@@ -19,7 +19,6 @@ class BidderNN(nn.Module):
 
         self.model_parameters = model_parameters
         self.M = M
-        
         architecture = self.model_parameters['architecture']
         dropout = self.model_parameters['dropout']
         dp = self.model_parameters['dropout_prob']

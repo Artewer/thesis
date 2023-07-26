@@ -42,6 +42,38 @@ def key_to_int(key):
 # bidder_ids = bidder ids in this value model (int)
 # scaler = scale the y values across all bidders, fit on the selected training set and apply on the validation set
 
+def get_model_weights(model): # torch
+    nnmodel = model.model
+    weights = []
+    for params in nnmodel.parameters():
+        weights.append(params.detach().cpu().numpy().T)        
+    return weights
+
+def get_model_layer_shapes(model, layer_type=None):
+    ''' return layer output shapes instead, 
+        if 'input' is given as desired layer type, insert input dim at the beginning.
+        assumes torch model '''
+    # nnmodel = self.Models[key]
+    nnmodel = model.model
+    Layer_shapes = []
+    for i, (name, param) in enumerate(nnmodel.named_parameters()):
+        if (i==0) and ('input' in layer_type): 
+            Layer_shapes.append(param.shape[1])
+        if any([x in name for x in layer_type]) and ('bias' in name):
+            Layer_shapes.append(param.shape[0])
+    return Layer_shapes
+
+def clean_weights(Wb):
+    for v in range(0, len(Wb)-2, 2):
+        Wb[v][abs(Wb[v]) <= 1e-8] = 0
+        Wb[v+1][abs(Wb[v+1]) <= 1e-8] = 0
+        zero_rows = np.where(np.logical_and((Wb[v] == 0).all(axis=0), Wb[v+1] == 0))[0]
+        if len(zero_rows) > 0:
+            logging.debug('Clean Weights (rows) %s', zero_rows)
+            Wb[v] = np.delete(Wb[v], zero_rows, axis=1)
+            Wb[v+1] = np.delete(Wb[v+1], zero_rows)
+            Wb[v+2] = np.delete(Wb[v+2], zero_rows, axis=0)
+    return(Wb)
 
 def initial_bids_mlca_gali(SATS_auction_instance, number_initial_bids, bidder_names, scaler=None):
     initial_bids = OrderedDict()
