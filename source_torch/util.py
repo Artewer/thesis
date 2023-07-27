@@ -109,12 +109,19 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
     values = D_presampled[:, -1].tolist()
     bundles = D_presampled[:, :-1].tolist()
     M = len(value_model.get_good_ids())
-        
+    print('Initial bundles and values')
+
+    #for bd in range(len(bundles)):
+    #    print(str(bundles[bd]) + ' ' + str(values[bd]))
+
     count = 1
     while count <= (n-presampled_n):
         reg = LinearRegression().fit(bundles, values)
         coef = reg.coef_
         intercept = reg.intercept_
+        print('Here are trained coefficients and intercept')
+        print(coef)
+        print(intercept)
         x_vectors = []
         x_distances = []
         for i in range(len(bundles)):
@@ -136,8 +143,10 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
             constraints.append(y_prediction - values[i] <= r)
 
             for j in range(len(values)):
-                constraints.append(values[j] - y_prediction + 10000 * b[j] >= r)
-                constraints.append(y_prediction - values[j] + 10000 * (1 - b[j]) >= r)
+                if j == i:
+                    continue
+                constraints.append(values[j] - y_prediction + 300 * b[j] >= r)
+                constraints.append(y_prediction - values[j] + 300 * (1 - b[j]) >= r)
 
             m.add_constraints(constraints)
 
@@ -147,9 +156,9 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
 
             try:
                 sol.get_objective_value()
+                sol.display()
             except:
                 print('No solution found')
-                continue
             vector = np.array([x[k].solution_value for k in range(M)])
             x_vectors.append(vector)
             distance = np.sum(np.abs(np.sum(vector*coef)+intercept - values[i]))
@@ -158,8 +167,11 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
         value = value_model.calculate_value(bidder_id, chosen_bundle)
         values.append(value)
         bundles.append(chosen_bundle.tolist())
+        print('Here is the solution vector and its value')
         print(chosen_bundle)
         print(value)
+        # for bd in range(len(bundles)):
+        #     print(str(bundles[bd]) + ' ' + str(values[bd]))
         count+=1
     D = np.array(bundles)
     D = np.hstack((D, np.array(values).reshape(-1, 1)))
