@@ -74,7 +74,6 @@ def initial_bids_mlca_galo(SATS_auction_instance, number_initial_bids, bidder_na
     initial_bids = OrderedDict()
     for bidder in bidder_names:
         logging.debug('Set up initial Bids with GALO for: %s', bidder)
-        #D = unif_random_bids((SATS_auction_instance, number_initial_bids, bidder_names)
         D = galo_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids, presampled_algorithm=presampled_algorithm, presampled_n=presampled_n, ml_model=ml_model)
         null = np.zeros(D.shape[1]).reshape(1, -1) # add null bundle
         D = np.append(D, null, axis=0)
@@ -109,10 +108,237 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
     values = D_presampled[:, -1].tolist()
     bundles = D_presampled[:, :-1].tolist()
     M = len(value_model.get_good_ids())
+    C = 10000
+    print('Initial bundles and values')
+    for bd in range(len(bundles)):
+       print(str(bundles[bd]) + ' ' + str(values[bd]))
+
+    count = 1
+    while count <= (n-presampled_n):
+        reg = LinearRegression().fit(bundles, values)
+        coef = reg.coef_
+        intercept = reg.intercept_
+        print('Here are trained coefficients and intercept')
+        print(coef)
+        print(intercept)
+        x_vectors = []
+        x_distances = []
+        for i in range(len(bundles)):
+            m = Model(name='sampling')
+            r = m.continuous_var(name='r')
+                        
+            x = m.binary_var_list(range(M), name='x')
+            
+            b = m.binary_var_list(len(values), name='b')
+
+            #Constraints
+
+            constraints = []
+
+            y_prediction = m.sum(x[k]*coef[k] for k in range(M)) + intercept
+
+            constraints.append(values[i] - y_prediction <= r)
+
+            constraints.append(y_prediction - values[i] <= r)
+
+            for j in range(len(values)):
+                if j == i:
+                    continue
+                constraints.append(values[j] - y_prediction + C * b[j] >= r)
+                constraints.append(y_prediction - values[j] + C * (1 - b[j]) >= r)
+
+            m.add_constraints(constraints)
+
+            m.maximize(r)
+
+            sol = m.solve()
+
+            try:
+                sol.get_objective_value()
+                sol.display()
+            except:
+                print('No solution found')
+            vector = np.array([x[k].solution_value for k in range(M)])
+            x_vectors.append(vector)
+            distance = np.sum(np.abs(np.sum(vector*coef)+intercept - values[i]))
+            x_distances.append(distance)
+        chosen_bundle = x_vectors[np.argmax(x_distances)]
+        value = value_model.calculate_value(bidder_id, chosen_bundle)
+        values.append(value)
+        bundles.append(chosen_bundle.tolist())
+        print('Here is the solution vector and its value')
+        print(chosen_bundle)
+        print(value)
+        count+=1
+    D = np.array(bundles)
+    D = np.hstack((D, np.array(values).reshape(-1, 1)))
+    return (D)
+
+
+def gali_bids_init(value_model, bidder_id, n):
+    logging.debug('Sampling with GALI %s bundle-value pairs from bidder %s',n, bidder_id)
+    M = len(value_model.get_good_ids())  # number of items in value model
+    b_0 = np.asarray(np.random.choice([0, 1], size=M))
+    S_matrix = []
+    S_matrix.append(b_0)
+    #S_matrix = np.zeros((n, M))  # initialize the matrix directly
+    #S_matrix[0] = np.random.choice([0, 1], size=M)  # set the first row
+    for i in range(n-1):
+        n_S_matrix = len(S_matrix)
+        x_vectors = []
+        x_distances = []
+        for j in range(n_S_matrix):
+            m = Model(name='greedy sampling')
+            indices = range(M)
+            # 2) initiate bundle we want to find, bundle that we compare right now and other sampled bundles
+            x = m.binary_var_list(keys = M, name='x')
+
+            #Define objective function
+            obj_function = m.sum(x[i] + S_matrix[j][i] - 2 * x[i] * S_matrix[j][i] for i in indices)
+
+            constraints = []
+            for k in range(n_S_matrix):
+                if k == j:
+                    continue
+                constraint_expr = m.sum(x[i] + S_matrix[k][i] - 2 * x[i] * S_matrix[k][i] for i in indices)
+                constraints.append(obj_function <= constraint_expr)
+            m.add_constraints(constraints)
+
+            m.maximize(obj_function)
+            m.solve()
+            vector = np.array([x[i].solution_value for i in range(M)])
+            #Calculate manhattan distance between bundle and corresponding bundle in S_matrix
+            distances = np.sum(np.abs(vector - S_matrix[j]))            
+            x_vectors.append(vector)
+            x_distances.append(distances)
+        S_matrix.append(x_vectors[np.argmax(x_distances)])
+    D = np.array(S_matrix)
+    def myfunc(bundle):
+        return value_model.calculate_value(bidder_id, bundle)
+    D = np.hstack((D, np.apply_along_axis(myfunc, 1, D).reshape(-1, 1)))
+    del myfunc
+    return (D)
+
+
+
+#TODO
+# def initial_bids_mlca_predefined(SATS_auction_instance, bidder_names, scaler=None, bundles = None):
+#     initial_bids = OrderedDict()
+#     for bidder in bidder_names:
+#         logging.debug('Set up initial Bids with Predefined Learning Method for: %s', bidder)
+#         D = predefined_bids_init(value_model=SATS_auction_instance, bundles=bundles, bider_id=key_to_int(bidder))
+#         null = np.zeros(D.shape[1]).reshape(1, -1) # add null bundle
+#         D = np.append(D, null, axis=0)
+#         X = D[:, :-1]
+#         Y = D[:, -1]
+#         initial_bids[bidder] = [X, Y]
+
+#     if scaler is not None: 
+#         tmp = np.array([])
+#         for bidder in bidder_names:
+#             tmp = np.concatenate((tmp, initial_bids[bidder][1]), axis=0)
+#         scaler.fit(tmp.reshape(-1, 1))
+#         logging.debug('')
+#         logging.debug('*SCALING*')
+#         logging.debug('---------------------------------------------')
+#         logging.debug('Samples seen: %s', scaler.n_samples_seen_)
+#         logging.debug('Data max: %s', scaler.data_max_)
+#         logging.debug('Data min: %s', scaler.data_min_)
+#         logging.debug('Scaling by: %s | %s==feature range max?', scaler.scale_, float(scaler.data_max_ * scaler.scale_))
+#         logging.debug('---------------------------------------------')
+#         initial_bids = OrderedDict(list((key, [value[0], scaler.transform(value[1].reshape(-1, 1)).flatten()]) for key, value in initial_bids.items()))
+#     return(initial_bids, scaler)
+
+# def predefined_bids_init(value_model, bider_id, bundles):
+#     logging.debug('Creating predefined initial bids form')
+#     D = np.array(bundles)
+#     # define helper function for specific bidder_id
+#     def myfunc(bundle):
+#         return value_model.calculate_value(bidder_id, bundle)
+#     D = np.hstack((D, np.apply_along_axis(myfunc, 1, D).reshape(-1, 1)))
+#     del myfunc
+#     return (D)
+
+def initial_bids_mlca_active_learning(SATS_auction_instance, number_initial_bids, bidder_names, scaler=None):
+    initial_bids = OrderedDict()
+    for bidder in bidder_names:
+        logging.debug('Set up initial Bids with Active Learning Method for: %s', bidder)
+        D = active_learning_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids)
+        null = np.zeros(D.shape[1]).reshape(1, -1) # add null bundle
+        D = np.append(D, null, axis=0)
+        X = D[:, :-1]
+        Y = D[:, -1]
+        initial_bids[bidder] = [X, Y]
+
+    if scaler is not None: 
+        tmp = np.array([])
+        for bidder in bidder_names:
+            tmp = np.concatenate((tmp, initial_bids[bidder][1]), axis=0)
+        scaler.fit(tmp.reshape(-1, 1))
+        logging.debug('')
+        logging.debug('*SCALING*')
+        logging.debug('---------------------------------------------')
+        logging.debug('Samples seen: %s', scaler.n_samples_seen_)
+        logging.debug('Data max: %s', scaler.data_max_)
+        logging.debug('Data min: %s', scaler.data_min_)
+        logging.debug('Scaling by: %s | %s==feature range max?', scaler.scale_, float(scaler.data_max_ * scaler.scale_))
+        logging.debug('---------------------------------------------')
+        initial_bids = OrderedDict(list((key, [value[0], scaler.transform(value[1].reshape(-1, 1)).flatten()]) for key, value in initial_bids.items()))
+    return(initial_bids, scaler)
+
+
+# def active_learning_bids_init(value_model, bidder_id, n):
+#     logging.debug('Sampling with active learning %s bundle-value pairs from bidder %s',n, bidder_id)
+#     M = len(value_model.get_good_ids())  # number of items in value model
+#     b_0 = np.asarray(np.random.choice([0, 1], size=M))
+#     S_matrix = []
+#     S_matrix.append(b_0)
+#     for i in range(n-1):
+#         n_S_matrix = len(S_matrix)
+#         x_vectors = []
+#         x_distances = []
+#         for j in range(n_S_matrix):LO for: %s', bidder'))
+#         #D = unif_random_bids((SATS_auction_instance, number_initial_bids, bidder_names)
+#         D = galo_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids, presampled_algorithm=presampled_algorithm, presampled_n=presampled_n, ml_model=ml_model)
+#         null = np.zeros(D.shape[1]).reshape(1, -1) # add null bundle
+#         D = np.append(D, null, axis=0)
+#         X = D[:, :-1]
+#         Y = D[:, -1]
+#         initial_bids[bidder] = [X, Y]
+#     if scaler is not None:
+#         tmp = np.array([])
+#         for bidder in bidder_names:
+#             tmp = np.concatenate((tmp, initial_bids[bidder][1]), axis=0)
+#         scaler.fit(tmp.reshape(-1, 1))
+#         logging.debug('')
+#         logging.debug('*SCALING*')
+#         logging.debug('---------------------------------------------')
+#         logging.debug('Samples seen: %s', scaler.n_samples_seen_)
+#         logging.debug('Data max: %s', scaler.data_max_)
+#         logging.debug('Data min: %s', scaler.data_min_)
+#         logging.debug('Scaling by: %s | %s==feature range max?', scaler.scale_, float(scaler.data_max_ * scaler.scale_))
+#         logging.debug('---------------------------------------------')
+#         initial_bids = OrderedDict(list((key, [value[0], scaler.transform(value[1].reshape(-1, 1)).flatten()]) for key, value in initial_bids.items()))
+#     return(initial_bids, scaler)
+
+
+def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm, ml_model):
+    logging.debug('Sampling with GALO using ' + str(presampled_algorithm))
+    def myfunc(bundle):
+        return value_model.calculate_value(bidder_id, bundle)
+    if presampled_algorithm == 'gali':
+        D_presampled = gali_bids_init(value_model=value_model, bidder_id=bidder_id, n=presampled_n)
+    else:
+        D_presampled = unif_random_bids(value_model=value_model, bidder_id=bidder_id, n=presampled_n)
+    
+    #create a list of last values from D_presampled
+    values = D_presampled[:, -1].tolist()
+    bundles = D_presampled[:, :-1].tolist()
+    M = len(value_model.get_good_ids())
     print('Initial bundles and values')
 
-    #for bd in range(len(bundles)):
-    #    print(str(bundles[bd]) + ' ' + str(values[bd]))
+    for bd in range(len(bundles)):
+       print(str(bundles[bd]) + ' ' + str(values[bd]))
 
     count = 1
     while count <= (n-presampled_n):
@@ -156,7 +382,7 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
 
             try:
                 sol.get_objective_value()
-                sol.display()
+                #sol.display()
             except:
                 print('No solution found')
             vector = np.array([x[k].solution_value for k in range(M)])
@@ -164,15 +390,14 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
             distance = np.sum(np.abs(np.sum(vector*coef)+intercept - values[i]))
             x_distances.append(distance)
         chosen_bundle = x_vectors[np.argmax(x_distances)]
-        value = value_model.calculate_value(bidder_id, chosen_bundle)
+        value = myfunc(chosen_bundle)
         values.append(value)
         bundles.append(chosen_bundle.tolist())
         print('Here is the solution vector and its value')
         print(chosen_bundle)
         print(value)
-        # for bd in range(len(bundles)):
-        #     print(str(bundles[bd]) + ' ' + str(values[bd]))
         count+=1
+    del myfunc
     D = np.array(bundles)
     D = np.hstack((D, np.array(values).reshape(-1, 1)))
     return (D)
@@ -301,6 +526,24 @@ def active_learning_bids_init(value_model, bidder_id, n):
         x_vectors = []
         x_distances = []
         for j in range(n_S_matrix):
+            m = Model(name='greedy sampling')
+            indices = range(M)
+            # 2) initiate bundle we want to find, bundle that we compare right now and other sampled bundles
+            x = m.binary_var_list(keys = M, name='x')
+
+            #Define objective function
+            obj_function = m.sum(x[i] + S_matrix[j][i] - 2 * x[i] * S_matrix[j][i] for i in indices)
+
+            for k in range(n_S_matrix):
+                if k == j:
+                    continue
+                constraint_expr = m.sum(x[i] + S_matrix[k][i] - 2 * x[i] * S_matrix[k][i] for i in indices)
+                m.add_constraint(obj_function <= constraint_expr)
+
+            m.maximize(obj_function)
+            m.solve()
+            vector = np.array([x[i].solution_value for i in range(M)])
+            distances = np.sum(np.sum(np.abs(S_matrix-vector))) #TODO test this
             m = Model(name='greedy sampling')
             indices = range(M)
             # 2) initiate bundle we want to find, bundle that we compare right now and other sampled bundles
