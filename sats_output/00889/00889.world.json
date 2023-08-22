@@ -1,0 +1,108 @@
+{
+  "size": 6,
+  "nationalCircle": {
+    "licenses": [
+      {
+        "position": 0,
+        "id": 0,
+        "worldId": 889
+      },
+      {
+        "position": 1,
+        "id": 1,
+        "worldId": 889
+      },
+      {
+        "position": 2,
+        "id": 2,
+        "worldId": 889
+      },
+      {
+        "position": 3,
+        "id": 3,
+        "worldId": 889
+      },
+      {
+        "position": 4,
+        "id": 4,
+        "worldId": 889
+      },
+      {
+        "position": 5,
+        "id": 5,
+        "worldId": 889
+      },
+      {
+        "position": 6,
+        "id": 6,
+        "worldId": 889
+      },
+      {
+        "position": 7,
+        "id": 7,
+        "worldId": 889
+      },
+      {
+        "position": 8,
+        "id": 8,
+        "worldId": 889
+      },
+      {
+        "position": 9,
+        "id": 9,
+        "worldId": 889
+      },
+      {
+        "position": 10,
+        "id": 10,
+        "worldId": 889
+      },
+      {
+        "position": 11,
+        "id": 11,
+        "worldId": 889
+      }
+    ],
+    "worldId": 889,
+    "size": 12
+  },
+  "regionalCircle": {
+    "licenses": [
+      {
+        "position": 0,
+        "id": 12,
+        "worldId": 889
+      },
+      {
+        "position": 1,
+        "id": 13,
+        "worldId": 889
+      },
+      {
+        "position": 2,
+        "id": 14,
+        "worldId": 889
+      },
+      {
+        "position": 3,
+        "id": 15,
+        "worldId": 889
+      },
+      {
+        "position": 4,
+        "id": 16,
+        "worldId": 889
+      },
+      {
+        "position": 5,
+        "id": 17,
+        "worldId": 889
+      }
+    ],
+    "worldId": 889,
+    "size": 6
+  },
+  "modelName": "Global Synergy Value Model",
+  "id": 889,
+  "implementation": "org.spectrumauctions.sats.core.model.gsvm.GSVMWorld"
+}

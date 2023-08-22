@@ -26,7 +26,9 @@ class MLCA_NN:
         self.scaler = scaler  # the scaler used for initially scaling the Y_train values
         self.history = None  # return value of the model.fit() method from keras
         self.loss = None  # return value of the model.fit() method from keras
-        self.device = torch.device('cpu')
+        self.device = torch.device('cuda')
+        #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
     def initialize_model(self, model_parameters):
         self.model_parameters = model_parameters

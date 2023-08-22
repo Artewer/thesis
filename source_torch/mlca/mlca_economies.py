@@ -93,6 +93,7 @@ import source_torch.util as util
 from source_torch.mlca.mlca_nn import MLCA_NN
 from source_torch.mlca.mlca_nn_mip import MLCA_NNMIP
 from source_torch.wdp import WDP
+from source_torch.util import save_result, load_result
 
 
 # %%
@@ -212,7 +213,7 @@ class MLCA_Economies:
                 self.elicited_bids = deepcopy(_elicited)
                 # added initial bids to capture initialization
                 self.initial_bundles = deepcopy(_elicited)
-                self.fitted_scaler = fitted_scaler # fitted scaler to initial bids
+                self.fitted_scaler = fitted_scaler # fitted scaler to initial bidsSATS_auction_instance
                 self.Qinit = [v[0].shape[0] for k,v in initial_bids.items()]
 
 
@@ -248,8 +249,12 @@ class MLCA_Economies:
                                                                                     scaler=self.scaler)
 
 
-
             self.elicited_bids, self.fitted_scaler = deepcopy(_elicited),deepcopy(_fitted)
+
+            #print(self.elicited_bids)
+            #result_dir = './experiments/MLCA/Torch/results/bundles.pkl' #TODO remove
+            #save_result(result_dir, self.elicited_bids)
+
             # added initial bids to capture initialization
             self.initial_bundles = deepcopy(_elicited)
         else:
