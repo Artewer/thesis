@@ -101,6 +101,7 @@ def set_value_model_parameters(configdict):
     SATS_domain_name = configdict['SATS_domain_name']
     NN_parameters = {}
     bidder_ids = configdict['bidder_ids']
+    device = configdict['device']
     if SATS_domain_name == 'LSVM':
         for bidder_id in bidder_ids:
             if bidder_id == 0:
@@ -112,7 +113,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                            ('device', device)])
             else:
                 NN_parameters['Bidder_{}'.format(bidder_id)] = OrderedDict([('regularization', regularization_R),
                                                                             ('learning_rate', learning_rate_R),
@@ -122,7 +124,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
     if SATS_domain_name == 'GSVM':
         for bidder_id in bidder_ids:
             if bidder_id == 6:
@@ -134,7 +137,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
             else:
                 NN_parameters['Bidder_{}'.format(bidder_id)] = OrderedDict([('regularization', regularization_R),
                                                                             ('learning_rate', learning_rate_R),
@@ -144,7 +148,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
     if SATS_domain_name == 'MRVM':
         for bidder_id in bidder_ids:
             if bidder_id in [0, 1, 2]:
@@ -156,7 +161,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
             if bidder_id in [3, 4, 5, 6]:
                 NN_parameters['Bidder_{}'.format(bidder_id)] = OrderedDict([('regularization', regularization_R),
                                                                             ('learning_rate', learning_rate_R),
@@ -166,7 +172,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
             if bidder_id in [7, 8, 9]:
                 NN_parameters['Bidder_{}'.format(bidder_id)] = OrderedDict([('regularization', regularization_N),
                                                                             ('learning_rate', learning_rate_N),
@@ -176,7 +183,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
     if SATS_domain_name == 'SRVM':
         for bidder_id in bidder_ids:
             if bidder_id in [0, 1]:
@@ -188,7 +196,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
             if bidder_id in [2, 3, 4]:
                 NN_parameters['Bidder_{}'.format(bidder_id)] = OrderedDict([('regularization', regularization_R),
                                                                             ('learning_rate', learning_rate_R),
@@ -198,7 +207,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
             if bidder_id in [5, 6]:
                 NN_parameters['Bidder_{}'.format(bidder_id)] = OrderedDict([('regularization', regularization_N),
                                                                             ('learning_rate', learning_rate_N),
@@ -208,7 +218,8 @@ def set_value_model_parameters(configdict):
                                                                             ('epochs', epochs),
                                                                             ('batch_size', batch_size),
                                                                             ('regularization_type',
-                                                                             regularization_type)])
+                                                                             regularization_type),
+                                                                             ('device', device)])
 
     print('\n------------------------ DNN  parameters ------------------------')
     print('Epochs:', epochs)

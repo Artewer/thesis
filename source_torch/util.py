@@ -18,11 +18,25 @@ from docplex.mp.model import Model
 from scipy.spatial.distance import cdist
 from numba import jit
 from sklearn import linear_model
-import scipy
 from torch.autograd import Variable
 import torch
+import pycuda.autoinit
+import pycuda.driver as drv
+from pycuda.compiler import SourceModule
 
 from collections import OrderedDict
+
+# get_source_mod = lambda : SourceModule('''
+# __global__ void generate_combinations_cuda(int *matrix, int n)
+# {
+#     int idx = threadIdx.x + blockDim.x * blockIdx.x;
+#     int tmp = idx;
+#     for (int i = 0; i < n; i++) {
+#         matrix[idx * n + i] = tmp % 2;
+#         tmp /= 2;
+#     }
+# }
+# ''')
 
 class linearRegression(torch.nn.Module):
     def __init__(self, inputSize, outputSize, params):
@@ -522,6 +536,18 @@ def active_learning_bids_init(value_model, bidder_id, n):
     return (D)
 
 
+
+def generate_combinations_pycuda(n):
+    mod = get_source_mod()
+    print(mod)
+    generate_combinations_cuda = mod.get_function("generate_combinations_cuda")
+    matrix_gpu = np.zeros((2**n, n), dtype=np.int32)
+    block_size = 32
+    grid_size = (2**n + block_size - 1) // block_size
+    generate_combinations_cuda(drv.Out(matrix_gpu), np.int32(n), block=(block_size, 1, 1), grid=(grid_size,1))
+    return matrix_gpu
+
+
 def generate_combinations(n):
     # create an empty list to store the combinations
     combinations = []
@@ -542,7 +568,7 @@ def initial_bids_mlca_fft_reverse(SATS_auction_instance, number_initial_bids, bi
     initial_bids = OrderedDict()
     for bidder in bidder_names:
         logging.debug('Set up initial Bids with Farthest First Traversal Reverse for: %s', bidder)
-        D = ffd_reverse_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids)
+        D = fft_reverse_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids)
         null = np.zeros(D.shape[1]).reshape(1, -1) # add null bundle
         D = np.append(D, null, axis=0)
         X = D[:, :-1]
@@ -565,7 +591,7 @@ def initial_bids_mlca_fft_reverse(SATS_auction_instance, number_initial_bids, bi
         initial_bids = OrderedDict(list((key, [value[0], scaler.transform(value[1].reshape(-1, 1)).flatten()]) for key, value in initial_bids.items()))
     return(initial_bids, scaler)
 
-def ffd_reverse_bids_init(value_model, bidder_id, n):
+def fft_reverse_bids_init(value_model, bidder_id, n):
     logging.debug('Sampling with ffd_reverse at random %s bundle-value pairs from bidder %s',n, bidder_id)
     ncol = len(value_model.get_good_ids())  # number of items in value model
     b_0 = np.asarray(np.random.choice([0, 1], size=ncol))
@@ -597,7 +623,7 @@ def initial_bids_mlca_fft(SATS_auction_instance, number_initial_bids, bidder_nam
     initial_bids = OrderedDict()
     for bidder in bidder_names:
         logging.debug('Set up initial Bids with Farthest First Traversal for: %s', bidder)
-        D = ffd_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids)
+        D = fft_bids_init(value_model=SATS_auction_instance, bidder_id=key_to_int(bidder), n=number_initial_bids)
         empty = np.zeros(D.shape[1]).reshape(1, -1) # add null bundle
         D = np.append(D, empty, axis=0)
         X = D[:, :-1]
@@ -619,38 +645,39 @@ def initial_bids_mlca_fft(SATS_auction_instance, number_initial_bids, bidder_nam
         initial_bids = OrderedDict(list((key, [value[0], scaler.transform(value[1].reshape(-1, 1)).flatten()]) for key, value in initial_bids.items()))
     return(initial_bids, scaler)
 
-def ffd_bids_init(value_model, bidder_id, n):
+def fft_bids_init(value_model, bidder_id, n):
     logging.debug('Sampling with ffd at random %s bundle-value pairs from bidder %s',n, bidder_id)
     ncol = len(value_model.get_good_ids())  # number of items in value model
     # generate random starting bid uniformly
-    b_0 = np.asarray(np.random.choice([0, 1], size=ncol))
-    # generate all possible combinations of 0's and 1's for n items
-    available_bids = np.array(generate_combinations(ncol))
-    D = np.empty((0, ncol))
-    # Add starting bid to chosen bids
-    D = np.append(D, b_0.reshape(1, -1), axis=0)
-    #Because we already have one bid + zero bid -> bundles-2
-    for i in range(n-1):
-        sum_distance = np.zeros(len(available_bids))
-        # Calculate euclidean distance between chosen bids and all available bids
-        for D_i in D:
-            D_i = D_i[np.newaxis, :]
-            distance = cdist(available_bids, D_i, metric='euclidean')
-            sum_distance += distance.flatten()
-        # Find an availabel bid with the maximum distance to all chosen bids
-        answers = np.argwhere(sum_distance == np.amax(sum_distance))
-        #if bid is already in the chosen bundle of bids -> choose the next one
-        # for a in answers:
-        #     if available_bids[a] not in D:
-        #         D = np.append(D, available_bids[a].reshape(1, -1), axis=0)
-        #         break
-        #     #if a is last element in answers and doesn't fit -> uniform sampling
-        #     elif a == answers[-1]:
-        #         D = np.append(D, available_bids[random.randint(0,len(available_bids)-1)].reshape(1, -1), axis=0)
-        # Add the bid with the maximum distance to the chosen bids
-        D = np.append(D, available_bids[answers[0]].reshape(1, -1), axis=0)
-        #D = np.append(D, available_bids[max_dist_idx].reshape(1, -1), axis=0)
-    # define helper function for specific bidder_id
+    available_bids = generate_combinations(ncol)
+    b_0 = available_bids[np.random.randint(0, len(available_bids))]
+    D = np.zeros((n, ncol))
+    D[0] = b_0
+    for i in range(1, n-1):
+        distances = cdist(available_bids, D[:i], metric='euclidean')
+        sum_dist = np.sum(distances, axis=1)
+        D[i] = available_bids[np.argmax(sum_dist)]
+    # for i in range(n-1):
+    #     sum_distance = np.zeros(len(available_bids))
+    #     # Calculate euclidean distance between chosen bids and all available bids
+    #     for D_i in D:
+    #         D_i = D_i[np.newaxis, :]
+    #         distance = cdist(available_bids, D_i, metric='euclidean')
+    #         sum_distance += distance.flatten()
+    #     # Find an availabel bid with the maximum distance to all chosen bids
+    #     answers = np.argwhere(sum_distance == np.amax(sum_distance))
+    #     #if bid is already in the chosen bundle of bids -> choose the next one
+    #     # for a in answers:
+    #     #     if available_bids[a] not in D:
+    #     #         D = np.append(D, available_bids[a].reshape(1, -1), axis=0)
+    #     #         break
+    #     #     #if a is last element in answers and doesn't fit -> uniform sampling
+    #     #     elif a == answers[-1]:
+    #     #         D = np.append(D, available_bids[random.randint(0,len(available_bids)-1)].reshape(1, -1), axis=0)
+    #     # Add the bid with the maximum distance to the chosen bids
+    #     D = np.append(D, available_bids[answers[0]].reshape(1, -1), axis=0)
+    #     #D = np.append(D, available_bids[max_dist_idx].reshape(1, -1), axis=0)
+    # # define helper function for specific bidder_id
     def myfunc(bundle):
         return value_model.calculate_value(bidder_id, bundle)
     D = np.hstack((D, np.apply_along_axis(myfunc, 1, D).reshape(-1, 1)))

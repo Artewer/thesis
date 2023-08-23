@@ -101,7 +101,7 @@ from source_torch.util import save_result, load_result
 
 class MLCA_Economies:
 
-    def __init__(self, SATS_auction_instance, SATS_auction_instance_seed, Qinit, Qmax, Qround, scaler):
+    def __init__(self, SATS_auction_instance, SATS_auction_instance_seed, Qinit, Qmax, Qround, scaler, device):
 
         # STATIC ATTRIBUTES
         self.SATS_auction_instance = SATS_auction_instance  # auction instance from SATS: LSVM, GSVM or MRVM generated via PySats.py.
@@ -149,6 +149,8 @@ class MLCA_Economies:
         self.argmax_allocation = OrderedDict(list((key, OrderedDict(list((bidder_id, [None, None]) for bidder_id in value))) for key, value in self.economies_names.items()))  # [a,a_restr] a: argmax bundles per bidder and economy, a_restr: restricted argmax bundles per bidder and economy
         self.NN_models = OrderedDict(list((key, OrderedDict(list((bidder_id, None) for bidder_id in value))) for key, value in self.economies_names.items()))  # tf.keras NN models
         self.losses = OrderedDict(list((key, OrderedDict(list((bidder_id, []) for bidder_id in value))) for key, value in self.economies_names.items()))  # Storage for the MAE loss during training of the DNNs
+
+        self.device = device
 
     def get_info(self, final_summary=False):
         if not final_summary: logging.warning('INFO')
@@ -428,6 +430,7 @@ class MLCA_Economies:
             return(self.argmax_allocation[economy_key][active_bidder][0]) # return regular argmax bundle
 
     def estimation_step(self, economy_key):
+        device = self.device
         logging.info('ESTIMATON STEP')
         logging.info('-----------------------------------------------')
         models = OrderedDict()
@@ -437,7 +440,7 @@ class MLCA_Economies:
 
             start = time.time()
             nn_model = MLCA_NN(X_train=bids[0], Y_train=bids[1], scaler=self.fitted_scaler)  # instantiate class
-            nn_model.initialize_model(model_parameters=self.NN_parameters[bidder])  # initialize model
+            nn_model.initialize_model(device = device, model_parameters=self.NN_parameters[bidder])  # initialize model
             tmp = nn_model.fit(epochs=self.NN_parameters[bidder]['epochs'], batch_size=self.NN_parameters[bidder]['batch_size'],  # fit model to data
                                X_valid=None, Y_valid=None)
             end = time.time()

@@ -63,7 +63,6 @@ def mlca_mechanism(SATS_domain_name=None, SATS_auction_instance_seed=None, Qinit
         # starter = configdict['Starter']
         active_learning_algorithm = configdict['active_learning_algorithm']
         presampled_n = configdict['presampled_n']
-        #ml_model = configdict['ml_model']
         presampled_algorithm = configdict['presampled_algorithm']
         
 
@@ -89,7 +88,7 @@ def mlca_mechanism(SATS_domain_name=None, SATS_auction_instance_seed=None, Qinit
     
     
     E = MLCA_Economies(SATS_auction_instance=SATS_auction_instance, SATS_auction_instance_seed=SATS_auction_instance_seed,
-                       Qinit=Qinit, Qmax=Qmax, Qround=Qround, scaler=scaler)  # create economy instance
+                       Qinit=Qinit, Qmax=Qmax, Qround=Qround, scaler=scaler, device = configdict['device'])  # create economy instance
 
 
     E.set_NN_parameters(parameters=NN_parameters)   # set NN parameters
@@ -110,9 +109,9 @@ def mlca_mechanism(SATS_domain_name=None, SATS_auction_instance_seed=None, Qinit
 
     # Set initial bids | Line 1-3
 
-    #new_ilp = MLCA_NNMIP()
 
     init_bids, init_fitted_scaler = init_bids_and_fitted_scaler
+
     if init_bids is not None:
         E.set_initial_bids(initial_bids=init_bids, fitted_scaler=init_fitted_scaler, active_learning_algorithm = active_learning_algorithm,  presampled_n=presampled_n, presampled_algorithm=presampled_algorithm) # (*) use self defined inital bids | Line 1
     else:

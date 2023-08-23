@@ -18,7 +18,7 @@ class MLCA_NN:
     def __init__(self, X_train, Y_train, scaler=None):
         self.M = X_train.shape[1]  # number of items
         self.X_train = X_train  # training set of bundles
-        self.Y_train = Y_train  # bidder's values for the bundels in X_train
+        self.Y_train = Y_train # bidder's values for the bundels in X_train
         self.X_valid = None   # test/validation set of bundles
         self.Y_valid = None  # bidder's values for the bundels in X_valid
         self.model_parameters = None  # neural network parameters
@@ -26,7 +26,7 @@ class MLCA_NN:
         self.scaler = scaler  # the scaler used for initially scaling the Y_train values
         self.history = None  # return value of the model.fit() method from keras
         self.loss = None  # return value of the model.fit() method from keras
-        self.device = torch.device('cuda')
+        self.device = torch.device(device)
         #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 

@@ -22,13 +22,12 @@ import pdb
 class MLCA_NNMIP:
 
     def __init__(self, models, L=None):
-        #M = models[list(models.keys())[0]].model[0].weight.data.cpu().T.numpy().shape[0] # number of items in the value model = dimension of input layer
+        self.M = models[list(models.keys())[0]].model[0].weight.data.cpu().T.numpy().shape[0] # number of items in the value model = dimension of input layer
         #print(M)
-        model_name = list(models.keys())[0]
-        models[model_name].model.cuda()
-        self.M = models[model_name].model[0].weight.T.data.shape[0]
-        print(self.M)
-
+        #model_name = list(models.keys())[0]
+        #models[model_name].model.to('cuda')
+        #self.M = models[model_name].model[0].weight.T.data.shape[0]
+        #print(self.M)
         self.Models = models  # dict of keras models
         #put all models on gpu
         # sorted list of bidders

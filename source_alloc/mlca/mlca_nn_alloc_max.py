@@ -61,7 +61,7 @@ class MLCA_NN_ALLOC_MAX:
         self.weights_dim = None
 
         self.scaler = scaler  # the scaler used for initially scaling the Y_train values
-        self.device = torch.device('cpu')  # default, may be changed in init
+        self.device = torch.device('cuda')  # default, may be changed in init
 
         self.weights_dict = OrderedDict()
         self.input_to_alloc = torch.empty([0]).to(self.device)
