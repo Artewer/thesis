@@ -82,7 +82,6 @@ class MLCA_NN:
     def initialize_model(self, model_parameters, device):
         
         self.model_parameters = model_parameters
-        #self.device = torch.device(model_parameters['device'])
         self.device = device
         self.model = BidderNN(self.M, model_parameters).to(self.device)
         lr = model_parameters['learning_rate']

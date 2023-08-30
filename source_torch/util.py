@@ -16,54 +16,41 @@ import logging
 import pickle
 from docplex.mp.model import Model
 from scipy.spatial.distance import cdist
-from numba import jit
 from sklearn import linear_model
 from torch.autograd import Variable
 import torch
-import pycuda.autoinit
-import pycuda.driver as drv
-from pycuda.compiler import SourceModule
+import gurobipy as gp
+from gurobipy import GRB
 
 from collections import OrderedDict
 
-# get_source_mod = lambda : SourceModule('''
-# __global__ void generate_combinations_cuda(int *matrix, int n)
-# {
-#     int idx = threadIdx.x + blockDim.x * blockIdx.x;
-#     int tmp = idx;
-#     for (int i = 0; i < n; i++) {
-#         matrix[idx * n + i] = tmp % 2;
-#         tmp /= 2;
-#     }
-# }
-# ''')
 
-class linearRegression(torch.nn.Module):
-    def __init__(self, inputSize, outputSize, params):
-        super(linearRegression, self).__init__()
-        self.params = params
-        self.model = torch.nn.Linear(inputSize, outputSize)
-        self.optimizer = torch.optim.SGD(self.parameters(), lr=params['lr'])
-        self.criterion = torch.nn.MSELoss()
+# class linearRegression(torch.nn.Module):
+#     def __init__(self, inputSize, outputSize, params):
+#         super(linearRegression, self).__init__()
+#         self.params = params
+#         self.model = torch.nn.Linear(inputSize, outputSize)
+#         self.optimizer = torch.optim.SGD(self.parameters(), lr=params['lr'])
+#         self.criterion = torch.nn.MSELoss()
 
-    def forward(self, x):
-        out = self.model(x)
-        return out
+#     def forward(self, x):
+#         out = self.model(x)
+#         return out
 
-    def train(self, x, y):
-        epochs = self.params['epochs']
+#     def train(self, x, y):
+#         epochs = self.params['epochs']
 
-        for epoch in range(epochs):
-            inputs = Variable(torch.from_numpy(x))
-            targets = Variable(torch.from_numpy(y))
-            self.optimizer.zero_grad()
-            outputs = self.forward(inputs)
-            loss = self.criterion(outputs, targets)
-            #print('epoch {}, loss {}'.format(epoch, loss.data[0]))
-            print(epoch)
-            print(loss)
-            loss.backward()
-            self.optimizer.step()
+#         for epoch in range(epochs):
+#             inputs = Variable(torch.from_numpy(x))
+#             targets = Variable(torch.from_numpy(y))
+#             self.optimizer.zero_grad()
+#             outputs = self.forward(inputs)
+#             loss = self.criterion(outputs, targets)
+#             #print('epoch {}, loss {}'.format(epoch, loss.data[0]))
+#             #print(epoch)
+#             #print(loss)
+#             loss.backward()
+#             self.optimizer.step()
 
 # %% (0) HELPER FUNCTIONS
 # %%
@@ -137,8 +124,8 @@ def initial_bids_mlca_galo(SATS_auction_instance, number_initial_bids, bidder_na
 
 
 def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm, ml_model):
+    logging.debug('Sampling with GALO using ' + str(presampled_algorithm))
     
-    logging.debug('Sampling with GALO using 1' + str(presampled_algorithm))
 
     def myfunc(bundle):
         return value_model.calculate_value(bidder_id, bundle)
@@ -151,24 +138,21 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
     #create a list of last values from D_presampled
     values = D_presampled[:, -1].tolist()
     bundles = D_presampled[:, :-1].tolist()
-    M = len(value_model.get_good_ids())
-    C = 6000
     # print('Initial bundles and values')
     # for bd in range(len(bundles)):
     #     print(str(bundles[bd]) + ' ' + str(values[bd]))
 
-    count = 1
-    while count <= (n-presampled_n):
-        print(count)
-        print('Here are the bundles')
-        print(bundles)
 
+    count = 1
+    C = 6000
+    while count <= (n-presampled_n):
+        count +=1
         #Linear regression implementation
-        #reg = linear_model.LinearRegression().fit(bundles, values)
+        reg = linear_model.LinearRegression().fit(bundles, values)
         #reg = linear_model.LinearRegression(positive=True).fit(bundles, values)
         #reg = linear_model.Ridge(alpha=.5).fit(bundles, values)
-        #coef = reg.coef_
-        #intercept = reg.intercept_
+        coef = reg.coef_
+        intercept = reg.intercept_
 
         #Pytorch implementation
         # x_train = np.array(bundles).astype(np.float32)
@@ -188,112 +172,111 @@ def galo_bids_init(value_model, bidder_id, n, presampled_n, presampled_algorithm
 
         #Linear Optimization
         # Sample data
-        X = np.array(bundles) 
-        #np.random.randint(100, size=(4, 10))
-
-        y = np.array(values)
-        #np.random.randint(100, size=(4, 1)).reshape(-1)
-
-        n, p = X.shape
-
+        #X = np.array(bundles) 
+        #y = np.array(values)
+        #n, p = X.shape
         # Create the model
-        mdl = Model("LinearRegression")
-
+        #mdl = Model("LinearRegression")
         # Define the variables for regression coefficients
-        beta = mdl.continuous_var_list(p, name="beta")
-
+        #beta = mdl.continuous_var_list(p, name="beta")
         # Define the quadratic objective
-        XT_X = np.dot(X.T, X)
-        XT_y = np.dot(X.T, y)
-        obj = 0.5 * mdl.sum(XT_X[i][j] * beta[i] * beta[j] for i in range(p) for j in range(p)) - mdl.sum(XT_y[i] * beta[i] for i in range(p)) + 0.5 * np.dot(y, y)
-
-        mdl.minimize(obj)
-
-
+        #XT_X = np.dot(X.T, X)
+        #XT_y = np.dot(X.T, y)
+        #obj = 0.5 * mdl.sum(XT_X[i][j] * beta[i] * beta[j] for i in range(p) for j in range(p)) - mdl.sum(XT_y[i] * beta[i] for i in range(p)) + 0.5 * np.dot(y, y)
+        #mdl.minimize(obj)
         # Solve the model
-        mdl.solve()
-
-        coef = [v.solution_value for v in beta]
-        intercept = 0
-
-        # Print the solution
-        # for v in beta:
-        #     print(f"{v.name} = {v.solution_value}")
-
-
-        print('Here are trained coefficients and intercept')
-        print(coef)
-        print(intercept)
+        #mdl.solve()
+        #coef = [v.solution_value for v in beta]
+        #intercept = 0
         x_vectors = []
         x_distances = []
         for i in range(len(bundles)):
-            m = Model(name='sampling')
+            with gp.Env(empty=True) as env:
+                env.setParam('LogToConsole', 0)
+                env.setParam('OutputFlag', 0)
+                env.setParam('Threads', 1)
+                env.setParam('NodefileStart', 0.5)
+                env.start()
+                with gp.Model(env=env) as m:
+                    try:
+                        x = m.addVars(len(bundles[0]), vtype=GRB.BINARY, name="x")
+                        b = m.addVars(len(bundles), vtype=GRB.BINARY, name="b")
+                        r = m.addVar(vtype=GRB.CONTINUOUS, name="r")
+                        m.setObjective(r, GRB.MAXIMIZE)
 
-            r = m.continuous_var(name='r')
+                        m.addConstr(r >= 0)
+
+                        y_prediction = sum(x[k]*coef[k] for k in range(len(bundles[0]))) + intercept
+
+                        m.addConstr(y_prediction >= 0)
+
+                        m.addConstr(values[i] - y_prediction <= r)
+                        m.addConstr(y_prediction - values[i] <= r)
+
+                        for j in range(len(bundles)):
+                            m.addConstr(values[j] - y_prediction + C * b[j] >= r)
+                            m.addConstr(y_prediction - values[j] + C * (1 - b[j]) >= r)
                         
-            x = m.binary_var_list(range(M), name='x')
-            
-            b = m.binary_var_list(len(values), name='b')
+                        m.optimize()
+                        #get x values from gurobi
+                        all_vars = m.getVars()
+                        #create a an x vector
+                        vector = [v.X for v in all_vars if v.VarName[0] == 'x']
+                        x_vectors.append(vector)
+                        x_distances.append(m.getObjective().getValue())
+                        #m.printStats()
+                    except:
+                        pass
+                        #print('Error code ' + str(e.errno) + ": " + str(e))
+                        #m.computeIIS()
+                        #m.write("model.ilp")
+                        #print(sum(coef[k] for k in range(len(bundles[0]))))
+                        #print(coef, intercept)
+                        #print(C)
+                        #print(test)
+                        #print(m.computeIIS())
+                    m.dispose()
+            #CPLEX
+            # m = Model(name='sampling')
 
-            #Constraints
+            # r = m.continuous_var(name='r')
+            # x = m.binary_var_list(range(M), name='x')
+            # b = m.binary_var_list(len(values), name='b')
 
-            #constraints = []
+            # #Constraints
+            # y_prediction = m.dot(x, coef) + intercept
 
-            y_prediction = m.sum(x[k]*coef[k] for k in range(M)) + intercept
+            # #m.add_constraint(y_prediction >= 0)
+            # #m.add_constraint(y_prediction <= max(values))
 
-            #constraints.append(m.sum(x[k]*coef[k] for k in range(M)) + intercept >= 0)
-            m.add_constraint(m.sum(x[k]*coef[k] for k in range(M)) + intercept >= 0)
+            # m.add_constraint(values[i] - y_prediction <= r)
+            # m.add_constraint(y_prediction - values[i] <= r)
 
-            m.add_constraint(y_prediction <= max(values))
+            # for j in range(len(values)):
+            #     m.add_constraint(values[j] - y_prediction + 1000 * b[j] >= r)
+            #     m.add_constraint(y_prediction - values[j] + 1000 * (1 - b[j]) >= r)
 
-            #constraints.append(values[i] - y_prediction <= r)
-            m.add_constraint(values[i] - y_prediction <= r)
+            # m.maximize(r)
 
-            #constraints.append(y_prediction - values[i] <= r)
-            m.add_constraint(y_prediction - values[i] <= r)
+            # sol = m.solve()
 
+            # try:
+            #     distance = sol.get_objective_value()
+            # except:
+            #     pass
 
-            for j in range(len(values)):
-                #constraints.append(values[j] - y_prediction + C * b[j] >= r)
-                #constraints.append(y_prediction - values[j] + C * (1 - b[j]) >= r)
-                m.add_constraint(values[j] - y_prediction + C * b[j] >= r)
-                m.add_constraint(y_prediction - values[j] + C * (1 - b[j]) >= r)
-
-            #m.add_constraints(constraints)
-
-            m.maximize(r)
-
-            sol = m.solve()
-
-            try:
-                distance = sol.get_objective_value()
-                print('This is our objective value of r')
-                print(sol.get_objective_value())
-            except:
-                print('No solution found')
-                print(m.print_information())
-                print(m.get_solve_status())
-                print(m.get_solve_details())
-                print(sol)
-                #iterate over constraints
-                for c in m.iter_constraints():
-                    print(c)
-            vector = np.array([x[k].solution_value for k in range(M)])
-            x_vectors.append(vector)
-            print('created vector')
-            print(vector)
-            distance1 = np.sum(np.abs(np.sum(vector*coef) + intercept - values[i]))
-            print('distance for this vector*coefficient + intercept - its true value. Now we use r for distance')
-            print(distance1)
-            x_distances.append(distance)
+            # vector = np.array([x[k].solution_value for k in range(M)])
+            # x_vectors.append(vector)
+            # x_distances.append(distance)
+        #m.clear()
+        #print('x_vectors')
+        #print(x_vectors)
+        #print('x_distances')
+        #print(x_distances)
         chosen_bundle = x_vectors[np.argmax(x_distances)]
         value = myfunc(chosen_bundle)
         values.append(value)
-        bundles.append(chosen_bundle.tolist())
-        print('Here is the solution vector and its value')
-        print(chosen_bundle)
-        print(value)
-        count+=1
+        bundles.append(chosen_bundle)
     del myfunc
     D = np.array(bundles)
     D = np.hstack((D, np.array(values).reshape(-1, 1)))
@@ -537,17 +520,6 @@ def active_learning_bids_init(value_model, bidder_id, n):
 
 
 
-def generate_combinations_pycuda(n):
-    mod = get_source_mod()
-    print(mod)
-    generate_combinations_cuda = mod.get_function("generate_combinations_cuda")
-    matrix_gpu = np.zeros((2**n, n), dtype=np.int32)
-    block_size = 32
-    grid_size = (2**n + block_size - 1) // block_size
-    generate_combinations_cuda(drv.Out(matrix_gpu), np.int32(n), block=(block_size, 1, 1), grid=(grid_size,1))
-    return matrix_gpu
-
-
 def generate_combinations(n):
     # create an empty list to store the combinations
     combinations = []
@@ -656,28 +628,17 @@ def fft_bids_init(value_model, bidder_id, n):
     for i in range(1, n-1):
         distances = cdist(available_bids, D[:i], metric='euclidean')
         sum_dist = np.sum(distances, axis=1)
-        D[i] = available_bids[np.argmax(sum_dist)]
-    # for i in range(n-1):
-    #     sum_distance = np.zeros(len(available_bids))
-    #     # Calculate euclidean distance between chosen bids and all available bids
-    #     for D_i in D:
-    #         D_i = D_i[np.newaxis, :]
-    #         distance = cdist(available_bids, D_i, metric='euclidean')
-    #         sum_distance += distance.flatten()
-    #     # Find an availabel bid with the maximum distance to all chosen bids
-    #     answers = np.argwhere(sum_distance == np.amax(sum_distance))
-    #     #if bid is already in the chosen bundle of bids -> choose the next one
-    #     # for a in answers:
-    #     #     if available_bids[a] not in D:
-    #     #         D = np.append(D, available_bids[a].reshape(1, -1), axis=0)
-    #     #         break
-    #     #     #if a is last element in answers and doesn't fit -> uniform sampling
-    #     #     elif a == answers[-1]:
-    #     #         D = np.append(D, available_bids[random.randint(0,len(available_bids)-1)].reshape(1, -1), axis=0)
-    #     # Add the bid with the maximum distance to the chosen bids
-    #     D = np.append(D, available_bids[answers[0]].reshape(1, -1), axis=0)
-    #     #D = np.append(D, available_bids[max_dist_idx].reshape(1, -1), axis=0)
-    # # define helper function for specific bidder_id
+        maxi = np.argmax(sum_dist)
+        bundle = available_bids[maxi]
+        #check if bundle is already in D
+        while np.any(np.all(D == bundle, axis=1)):
+            # get next argmax bundle
+            logging.debug('bundle was already in D')
+            logging.debug(bundle)
+            sum_dist[maxi] = 0
+            maxi = np.argmax(sum_dist)
+            bundle = available_bids[maxi]
+        D[i] = bundle
     def myfunc(bundle):
         return value_model.calculate_value(bidder_id, bundle)
     D = np.hstack((D, np.apply_along_axis(myfunc, 1, D).reshape(-1, 1)))

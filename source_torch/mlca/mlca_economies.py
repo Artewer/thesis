@@ -253,10 +253,6 @@ class MLCA_Economies:
 
             self.elicited_bids, self.fitted_scaler = deepcopy(_elicited),deepcopy(_fitted)
 
-            #print(self.elicited_bids)
-            #result_dir = './experiments/MLCA/Torch/results/bundles.pkl' #TODO remove
-            #save_result(result_dir, self.elicited_bids)
-
             # added initial bids to capture initialization
             self.initial_bundles = deepcopy(_elicited)
         else:
