@@ -1,4 +1,4 @@
-# Bachelor Thesis: Machine Learning and Deep Learning in Iterative Combinatorial Auctions
+# Bachelor Thesis: Active Learning in Iterative Combinatorial Auctions
 ## Overview
 This project focuses on the implementation and analysis of active learning techniques in the domain of Iterative Combinatorial Auctions. The core objective is to enhance the efficiency and effectiveness of the initial auction rounds using active learning strategies.
 
